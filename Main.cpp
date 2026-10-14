@@ -23,9 +23,10 @@ const char* fragmentShaderSource = "#version 330 core\n"
 "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
 "}\n\0";
 
+// vector creation functions for shapes
 
-
-std::vector<float> createCircle(int segments = 60)
+// for circle
+std::vector<float> createCircle(int segments)
 {
 	std::vector<float> vertices;
 
@@ -42,8 +43,30 @@ std::vector<float> createCircle(int segments = 60)
 	return vertices;
 }
 
+// for rectangle
+std::vector<float> createRectangle(float width, float height)
+{
+	std::vector<float> vertices;
+
+	vertices.push_back(-width / 2.0f);
+	vertices.push_back(-height / 2.0f);
+	vertices.push_back(width / 2.0f);
+	vertices.push_back(-height / 2.0f);
+	vertices.push_back(width / 2.0f);
+	vertices.push_back(height / 2.0f);
+	vertices.push_back(-width / 2.0f);
+	vertices.push_back(height / 2.0f);
+
+	return vertices;
+}
+
+// combined vertex data for shapes generated
+std::vector<float> circleVertices = createCircle(60);
+std::vector<float> rectangleVertices = createRectangle(0.2f, 0.1f);
+
 int main()
 {
+	
 	// Initialize GLFW
 	glfwInit();
 	
@@ -98,9 +121,23 @@ int main()
 	// Delete the vertex shader and fragment shader objects
 	glDeleteShader(vertexShader);
 	glDeleteShader(fragmentShader);
-
 	// Make circle geometry
 	std::vector<float> circleVertices = createCircle(60);
+
+	// create rectangle geometry
+	std::vector<float> rectangleVertices = createRectangle(0.2f, 0.1f);
+	// Create VAO and VBO for rectangle
+	GLuint rectangleVAO, rectangleVBO;
+	glGenVertexArrays(1, &rectangleVAO);
+	glGenBuffers(1, &rectangleVBO);
+
+	glBindVertexArray(rectangleVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, rectangleVBO);
+	glBufferData(GL_ARRAY_BUFFER, rectangleVertices.size() * sizeof(float), rectangleVertices.data(), GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
 
 	// Create reference for Vertex array object and Vertex buffer object
 	GLuint VAO, VBO;
@@ -126,8 +163,6 @@ int main()
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
-	particle ball(flatVector(0.0f, 0.7f), 0.08f, 1.0f);
-
 	GLint offSetLoc = glGetUniformLocation(shaderProgram, "offset");
 
 	// timing
@@ -138,6 +173,26 @@ int main()
 	glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 	glfwSwapBuffers(window);
+
+
+	
+	// initiliaze ball particle with (position, radius, mass))
+	particle ball(flatVector(-0.3f, 0.7f), 0.08f, 1.0f);
+	// set inital angle
+	float angleRadians = -30.0f * (3.14159265f / 180.0f);
+	// set inital speed
+	float speed = 1.5f;
+	// set initial velocity based on angle and speed
+	ball.velocity = flatVector(speed * cos(angleRadians), speed * sin(angleRadians));
+
+	// initalize rectangle with (position, width, height)
+	particle rectangle(flatVector(0.0f, -0.5f), 0.2f, 0.1f);
+	// set initial velocity for rectangle
+	rectangle.velocity = flatVector(0.0f, 0.0f);
+	// set initial restitution for rectangle
+	rectangle.restitution = 0.8f;
+	// set initial mass for rectangle
+	rectangle.mass = 1.0f;
 		
 	// Main loop, keeps window open until user closes it
 	while (!glfwWindowShouldClose(window))
@@ -148,18 +203,66 @@ int main()
 		float dt = currentTime - lastTime;
 		lastTime = currentTime;
 
-		if (dt > 0.016f) dt = 0.016f;
+		if (dt > 0.01f) dt = 0.01f;
 
 		// physics
-		ball.applyGravity(9.81f);
+		//-----------
 		ball.rk4(dt);
+		rectangle.rk4(dt);
 
-
-		if (ball.position.y - ball.radius < -0.9f)
+		// collision with left boundary
+		if (ball.position.x - ball.radius <= -0.9f)
+		{
+			ball.position.x = -0.9f + ball.radius;
+			ball.velocity = flatVector(-ball.velocity.x * ball.restitution, ball.velocity.y);
+		}
+		// collision with bottom boundary
+		if (ball.position.y - ball.radius <= -0.9f)
 		{
 			ball.position.y = -0.9f + ball.radius;
-			ball.velocity.y *= -0.85f;
+			ball.velocity = flatVector(ball.velocity.x, -ball.velocity.y * ball.restitution);
+
 		}
+		// collision with right boundary
+		if (ball.position.x + ball.radius >= 0.9f)
+		{
+			ball.position.x = 0.9f - ball.radius;
+			ball.velocity = flatVector(-ball.velocity.x * ball.restitution, ball.velocity.y);
+		}
+
+		// collision with top boundary
+		if (ball.position.y + ball.radius > 0.9f)
+		{
+			ball.position.y = 0.9f - ball.radius;
+			ball.velocity = flatVector(ball.velocity.x, -ball.velocity.y * ball.restitution);
+		}
+
+		// rectangle collisions
+		// left
+		if (rectangle.position.x - rectangle.width / 2 <= -0.9f)
+		{
+			rectangle.position.x = -0.9f + rectangle.width / 2;
+			rectangle.velocity = flatVector(-rectangle.velocity.x * rectangle.restitution, rectangle.velocity.y);
+		}
+		// right
+		if (rectangle.position.x + rectangle.width / 2 >= 0.9f)
+		{
+			rectangle.position.x = 0.9f - rectangle.width / 2;
+			rectangle.velocity = flatVector(-rectangle.velocity.x * rectangle.restitution, rectangle.velocity.y);
+		}
+		// top
+		if (rectangle.position.y + rectangle.height / 2 >= 0.9f)
+		{
+			rectangle.position.y = 0.9f - rectangle.height / 2;
+			rectangle.velocity = flatVector(rectangle.velocity.x, -rectangle.velocity.y * rectangle.restitution);
+		}
+		// bottom
+		if (rectangle.position.y - rectangle.height / 2 <= -0.9f)
+		{
+			rectangle.position.y = -0.9f + rectangle.height / 2;
+			rectangle.velocity = flatVector(rectangle.velocity.x, -rectangle.velocity.y * rectangle.restitution);
+		}
+
 
 		glClear(GL_COLOR_BUFFER_BIT);
 		// Tell OpenGL which Shader Program we want to use
@@ -169,13 +272,20 @@ int main()
 		glBindVertexArray(VAO);
 		// Draw the triangles using the function GL_TRIANGLES
 		glDrawArrays(GL_TRIANGLE_FAN, 0, circleVertices.size() / 2);
+		glUniform2f(offSetLoc, rectangle.position.x, rectangle.position.y);
+		glBindVertexArray(rectangleVAO);
+		glDrawArrays(GL_TRIANGLE_FAN, 0, rectangleVertices.size() / 2);
 		glfwSwapBuffers(window);
 
 		glfwPollEvents();
 	}
+
+
 	// Deleting the VAO, VBO and shader program
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
+	glDeleteVertexArrays(1, &rectangleVAO);
+	glDeleteBuffers(1, &rectangleVBO);
 	glDeleteProgram(shaderProgram);
 
 	glfwDestroyWindow(window);

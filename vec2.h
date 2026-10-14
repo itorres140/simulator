@@ -2,6 +2,8 @@
 
 #include <cmath>
 
+// 2d vector arithmetic and operations class
+
 class flatVector
 {	
 public:

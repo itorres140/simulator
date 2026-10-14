@@ -7,12 +7,19 @@
             "args": [
                 "-fdiagnostics-color=always",
                 "-g",
-                "${file}",
+                "-I${workspaceFolder}/Libraries/include",
+                "${workspaceFolder}/Main.cpp",
+                "${workspaceFolder}/glad.c",
                 "-o",
-                "${fileDirname}/${fileBasenameNoExtension}"
+                "${workspaceFolder}/simulator",
+                "-lglfw",
+                "-lGL",
+                "-ldl",
+                "-lX11",
+                "-lpthread"
             ],
             "options": {
-                "cwd": "${fileDirname}"
+                "cwd": "${workspaceFolder}"
             },
             "problemMatcher": [
                 "$gcc"
