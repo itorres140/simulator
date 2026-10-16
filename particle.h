@@ -2,7 +2,14 @@
 #include "vec2.h"
 #include <tuple>
 #include <vector>
+#include <cmath>
 
+enum class ParticleType
+{
+	Ball,
+	Rectangle,
+
+};
 // storing all particle prop and state into vector
 struct particle
 {
@@ -21,7 +28,6 @@ struct particle
 	float volume;
 	float width;
 	float length;
-	int id;
 
 	particle(flatVector pos,float r, float m, float e = 0.8f):
 		position(pos),
@@ -37,8 +43,7 @@ struct particle
 		density(0.0f),
 		volume(0.0f),
 		width(0.0f),
-		length(0.0f),
-		id(0)
+		length(0.0f)
 	
 	{
 	}
@@ -70,4 +75,6 @@ struct particle
 	}
 
 };
+
+
 

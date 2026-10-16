@@ -23,15 +23,68 @@ const char* fragmentShaderSource = "#version 330 core\n"
 "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
 "}\n\0";
 
-// vector creation functions for shapes
 
-// for circle
-std::vector<float> createCircle(int segments)
+// Get the number of segments for the circle from the user
+// Ideally wanna make ui for all input instead of using console
+int getCircleVertices()
+{
+	int segments;
+	std::cout << "Enter number of segments: ";
+	std::cin >> segments;
+	return segments;
+};
+
+// Get the radius of the circle
+float getCircleRadius()
+{
+	float radius;
+	std::cout << "Enter radius: ";
+	std::cin >> radius;
+	return radius;
+};
+
+// Get the initial position of particle
+void setInitialPosition(particle& p, float x, float y)
+{
+	std::cout << "Enter initial x position: ";
+	std::cin >> x;
+		if (x < -1.0f || x > 1.0f)
+		{
+			std::cout << "x position must be between -1.0 and 1.0" << std::endl;
+			return;
+		}
+	std::cout << "Enter initial y position: ";
+	std::cin >> y;
+		if (y < -1.0f || y > 1.0f)
+		{
+			std::cout << "y position must be between -1.0 and 1.0" << std::endl;
+			return;
+		}
+	p.position = flatVector(x, y);
+};
+
+// Get the number of circles from the user
+int getNumCircles()
+{
+	int numCircles;
+	std::cout << "Enter number of circles: ";
+	std::cin >> numCircles;
+	return numCircles;
+};
+
+float radius = getCircleRadius();
+int segments = getCircleVertices();
+
+std::vector<float> createCircle(float radius = radius, int segments = segments)
 {
 	std::vector<float> vertices;
+	// radius = getCircleRadius();
+	// segments = getCircleVertices();
 
 	const float PI = 3.14159265358979323846f;
-	const float radius = 0.08f;
+
+	vertices.push_back(0.0f);
+	vertices.push_back(0.0f);
 
 	for (int i = 0; i <= segments; i++)
 	{
@@ -41,28 +94,7 @@ std::vector<float> createCircle(int segments)
 		vertices.push_back(std::sin(angle) * radius);
 	}
 	return vertices;
-}
-
-// for rectangle
-std::vector<float> createRectangle(float width, float height)
-{
-	std::vector<float> vertices;
-
-	vertices.push_back(-width / 2.0f);
-	vertices.push_back(-height / 2.0f);
-	vertices.push_back(width / 2.0f);
-	vertices.push_back(-height / 2.0f);
-	vertices.push_back(width / 2.0f);
-	vertices.push_back(height / 2.0f);
-	vertices.push_back(-width / 2.0f);
-	vertices.push_back(height / 2.0f);
-
-	return vertices;
-}
-
-// combined vertex data for shapes generated
-std::vector<float> circleVertices = createCircle(60);
-std::vector<float> rectangleVertices = createRectangle(0.2f, 0.1f);
+};
 
 int main()
 {
@@ -121,23 +153,48 @@ int main()
 	// Delete the vertex shader and fragment shader objects
 	glDeleteShader(vertexShader);
 	glDeleteShader(fragmentShader);
-	// Make circle geometry
-	std::vector<float> circleVertices = createCircle(60);
 
-	// create rectangle geometry
-	std::vector<float> rectangleVertices = createRectangle(0.2f, 0.1f);
-	// Create VAO and VBO for rectangle
-	GLuint rectangleVAO, rectangleVBO;
-	glGenVertexArrays(1, &rectangleVAO);
-	glGenBuffers(1, &rectangleVBO);
 
-	glBindVertexArray(rectangleVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, rectangleVBO);
-	glBufferData(GL_ARRAY_BUFFER, rectangleVertices.size() * sizeof(float), rectangleVertices.data(), GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
+
+
+
+
+
+
+
+
+
+
+	// Create circle vertices based on the specified radius and number of segments
+	std::vector<float> circleVertices = createCircle(radius, segments);
+
+
+	// store circle information in particle vector
+	std::vector<particle> circles;
+
+	// Add circles as position, radius, mass, and restitution.
+	circles.push_back(particle(flatVector(0.0f, 0.0f), 0.08f, 1.0f));
+
+	circles.push_back(particle(flatVector(0.5f, 0.5f), 0.08f, 1.0f));
+
+	circles.push_back(particle(flatVector(-0.5f, -0.5f), 0.08f, 1.0f));
+
+	circles.push_back(particle(flatVector(0.5f, -0.5f), 0.08f, 1.0f));
+	circles.push_back(particle(flatVector(-0.5f, 0.5f), 0.08f, 1.0f));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	// Create reference for Vertex array object and Vertex buffer object
 	GLuint VAO, VBO;
@@ -151,7 +208,7 @@ int main()
 	
 	// Bind VBO making sure its a GL_ARRAY_BUFFER
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	// Introduce the verticies into the VBO
+	// Upload the circle mesh, not the particle state.
 	glBufferData(GL_ARRAY_BUFFER, circleVertices.size() * sizeof(float), circleVertices.data(), GL_STATIC_DRAW);
 
 	// Configure VAO so that OpenGL knows how to read the VBO
@@ -175,25 +232,21 @@ int main()
 	glfwSwapBuffers(window);
 
 
-	
-	// initiliaze ball particle with (position, radius, mass))
-	particle ball(flatVector(-0.3f, 0.7f), 0.08f, 1.0f);
-	// set inital angle
-	float angleRadians = -30.0f * (3.14159265f / 180.0f);
-	// set inital speed
-	float speed = 1.5f;
-	// set initial velocity based on angle and speed
-	ball.velocity = flatVector(speed * cos(angleRadians), speed * sin(angleRadians));
 
-	// initalize rectangle with (position, width, height)
-	particle rectangle(flatVector(0.0f, -0.5f), 0.2f, 0.1f);
-	// set initial velocity for rectangle
-	rectangle.velocity = flatVector(0.0f, 0.0f);
-	// set initial restitution for rectangle
-	rectangle.restitution = 0.8f;
-	// set initial mass for rectangle
-	rectangle.mass = 1.0f;
-		
+
+	// initialize with velocity
+	// first circle
+	circles[0].velocity = flatVector(0.8f, 0.1f);
+	// second circle
+	circles[1].velocity = flatVector(-1.0f, 0.1f);
+	// third circle
+	circles[2].velocity = flatVector(0.1f, -7.0f);
+	// fourth circle
+	circles[3].velocity = flatVector(-0.1f, -0.1f);
+	// fifth circle
+	circles[4].velocity = flatVector(0.0f, 0.0f);
+
+
 	// Main loop, keeps window open until user closes it
 	while (!glfwWindowShouldClose(window))
 	{
@@ -203,78 +256,86 @@ int main()
 		float dt = currentTime - lastTime;
 		lastTime = currentTime;
 
+		// cap the maximum delta time to prevent large jumps
 		if (dt > 0.01f) dt = 0.01f;
 
-		// physics
-		//-----------
-		ball.rk4(dt);
-		rectangle.rk4(dt);
-
-		// collision with left boundary
-		if (ball.position.x - ball.radius <= -0.9f)
+		// rk4 integration for each circle
+		for (particle& circle : circles)
 		{
-			ball.position.x = -0.9f + ball.radius;
-			ball.velocity = flatVector(-ball.velocity.x * ball.restitution, ball.velocity.y);
-		}
-		// collision with bottom boundary
-		if (ball.position.y - ball.radius <= -0.9f)
-		{
-			ball.position.y = -0.9f + ball.radius;
-			ball.velocity = flatVector(ball.velocity.x, -ball.velocity.y * ball.restitution);
-
-		}
-		// collision with right boundary
-		if (ball.position.x + ball.radius >= 0.9f)
-		{
-			ball.position.x = 0.9f - ball.radius;
-			ball.velocity = flatVector(-ball.velocity.x * ball.restitution, ball.velocity.y);
+			circle.rk4(dt);
 		}
 
-		// collision with top boundary
-		if (ball.position.y + ball.radius > 0.9f)
+		// collision with left boundary for all circles 
+		for (particle& circle : circles)
 		{
-			ball.position.y = 0.9f - ball.radius;
-			ball.velocity = flatVector(ball.velocity.x, -ball.velocity.y * ball.restitution);
+			if (circle.position.x - circle.radius <= -0.9f)
+			{
+				circle.position.x = -0.9f + circle.radius;
+				circle.velocity = flatVector(-circle.velocity.x * circle.restitution, circle.velocity.y);
+			}
+		}
+		// collision with bottom boundary for all circles
+		for (particle& circle : circles)
+		{
+			if (circle.position.y - circle.radius <= -0.9f)
+			{
+				circle.position.y = -0.9f + circle.radius;
+				circle.velocity = flatVector(circle.velocity.x, -circle.velocity.y * circle.restitution);
+
+			}
+		}
+		// collision with right boundary for all circles
+		for (particle& circle : circles)
+		{
+			if (circle.position.x + circle.radius >= 0.9f)
+			{
+				circle.position.x = 0.9f - circle.radius;
+				circle.velocity = flatVector(-circle.velocity.x * circle.restitution, circle.velocity.y);
+			}
 		}
 
-		// rectangle collisions
-		// left
-		if (rectangle.position.x - rectangle.width / 2 <= -0.9f)
+		// collision with top boundary for all circles
+		for (particle& circle : circles)
 		{
-			rectangle.position.x = -0.9f + rectangle.width / 2;
-			rectangle.velocity = flatVector(-rectangle.velocity.x * rectangle.restitution, rectangle.velocity.y);
+			if (circle.position.y + circle.radius > 0.9f)
+			{
+				circle.position.y = 0.9f - circle.radius;
+				circle.velocity = flatVector(circle.velocity.x, -circle.velocity.y * circle.restitution);
+			}
 		}
-		// right
-		if (rectangle.position.x + rectangle.width / 2 >= 0.9f)
-		{
-			rectangle.position.x = 0.9f - rectangle.width / 2;
-			rectangle.velocity = flatVector(-rectangle.velocity.x * rectangle.restitution, rectangle.velocity.y);
-		}
-		// top
-		if (rectangle.position.y + rectangle.height / 2 >= 0.9f)
-		{
-			rectangle.position.y = 0.9f - rectangle.height / 2;
-			rectangle.velocity = flatVector(rectangle.velocity.x, -rectangle.velocity.y * rectangle.restitution);
-		}
-		// bottom
-		if (rectangle.position.y - rectangle.height / 2 <= -0.9f)
-		{
-			rectangle.position.y = -0.9f + rectangle.height / 2;
-			rectangle.velocity = flatVector(rectangle.velocity.x, -rectangle.velocity.y * rectangle.restitution);
-		}
+
+		// collision between circles for all pairs
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 		glClear(GL_COLOR_BUFFER_BIT);
 		// Tell OpenGL which Shader Program we want to use
 		glUseProgram(shaderProgram);
-		glUniform2f(offSetLoc, ball.position.x, ball.position.y);
 		// Bind the VAO so OpenGL knows to use it
 		glBindVertexArray(VAO);
 		// Draw the triangles using the function GL_TRIANGLES
-		glDrawArrays(GL_TRIANGLE_FAN, 0, circleVertices.size() / 2);
-		glUniform2f(offSetLoc, rectangle.position.x, rectangle.position.y);
-		glBindVertexArray(rectangleVAO);
-		glDrawArrays(GL_TRIANGLE_FAN, 0, rectangleVertices.size() / 2);
+		for (const particle& circle : circles)
+		{
+			glUniform2f(offSetLoc, circle.position.x, circle.position.y);
+			glDrawArrays(GL_TRIANGLE_FAN, 0,
+				static_cast<GLsizei>(circleVertices.size() / 2));
+		}
 		glfwSwapBuffers(window);
 
 		glfwPollEvents();
@@ -284,8 +345,6 @@ int main()
 	// Deleting the VAO, VBO and shader program
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
-	glDeleteVertexArrays(1, &rectangleVAO);
-	glDeleteBuffers(1, &rectangleVBO);
 	glDeleteProgram(shaderProgram);
 
 	glfwDestroyWindow(window);
