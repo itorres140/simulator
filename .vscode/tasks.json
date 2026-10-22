@@ -9,6 +9,7 @@
                 "-g",
                 "-I${workspaceFolder}/Libraries/include",
                 "${workspaceFolder}/Main.cpp",
+                "${workspaceFolder}/render.cpp",
                 "${workspaceFolder}/glad.c",
                 "-o",
                 "${workspaceFolder}/simulator",

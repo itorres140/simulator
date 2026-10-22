@@ -5,25 +5,36 @@
 #include "vec2.h"
 #include "particle.h"
 #include <vector>
+#include <random>
+#include "render.h"
+#include "shapes.h"
+using namespace std;
 
-// Vertex Shader with 2D orthographic projection
-const char* vertexShaderSource = "#version 330 core\n"
-"layout (location = 0) in vec2 aPos;\n"
-"uniform vec2 offset;\n"
-"void main()\n"
-"{\n"
-"   gl_Position = vec4(aPos + offset, 0.0, 1.0);\n"
-"}\0";
+random_device rd;
+mt19937 gen(rd());
 
-// Fragment Shader
-const char* fragmentShaderSource = "#version 330 core\n"
-"out vec4 FragColor;\n"
-"void main()\n"
-"{\n"
-"   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-"}\n\0";
+float randomFloat(float min, float max)
+{
+	std::uniform_real_distribution<float> dis(min, max);
+	return dis(gen);
+}
 
+flatVector randomPosition()
+{
+	float x = randomFloat(-0.8, 0.8);
+	float y = randomFloat(-0.8, 0.8);
+	return flatVector(x, y);
+}
 
+flatVector randomVelocity()
+{
+	return flatVector(randomFloat(-0.5f, 0.5f), randomFloat(-0.5f, 0.5f));
+}
+
+flatVector randomAcceleration()
+{
+	return flatVector(randomFloat(-0.2f, 0.2f), randomFloat(-0.2f, 0.2f));
+}
 // Get the number of segments for the circle from the user
 // Ideally wanna make ui for all input instead of using console
 int getCircleVertices()
@@ -40,42 +51,51 @@ float getCircleRadius()
 	float radius;
 	std::cout << "Enter radius: ";
 	std::cin >> radius;
+
+	if (radius <= 0.0f)
+	{
+		std::cout << "Radius must be greater than 0" << std::endl;
+		return getCircleRadius();
+	}
+
+	if (radius != radius) // Check for NaN
+	{
+		std::cout << "Radius must be a valid number" << std::endl;
+		return getCircleRadius();
+	}
 	return radius;
 };
 
 // Get the initial position of particle
-void setInitialPosition(particle& p, float x, float y)
+flatVector setInitialPosition()
 {
+
+	float x;
+	float y;
+	
 	std::cout << "Enter initial x position: ";
 	std::cin >> x;
 		if (x < -1.0f || x > 1.0f)
 		{
 			std::cout << "x position must be between -1.0 and 1.0" << std::endl;
-			return;
-		}
+			return setInitialPosition();
+		};
+
 	std::cout << "Enter initial y position: ";
 	std::cin >> y;
 		if (y < -1.0f || y > 1.0f)
 		{
 			std::cout << "y position must be between -1.0 and 1.0" << std::endl;
-			return;
-		}
-	p.position = flatVector(x, y);
-};
+			return setInitialPosition();
+
+		};
+
+	return flatVector(x, y);
+}; 
 
 // Get the number of circles from the user
-int getNumCircles()
-{
-	int numCircles;
-	std::cout << "Enter number of circles: ";
-	std::cin >> numCircles;
-	return numCircles;
-};
 
-float radius = getCircleRadius();
-int segments = getCircleVertices();
-
-std::vector<float> createCircle(float radius = radius, int segments = segments)
+/*vector<float> createCircle(float radius = getCircleRadius(), int segments = getCircleVertices())
 {
 	std::vector<float> vertices;
 	// radius = getCircleRadius();
@@ -94,13 +114,85 @@ std::vector<float> createCircle(float radius = radius, int segments = segments)
 		vertices.push_back(std::sin(angle) * radius);
 	}
 	return vertices;
+};*/
+
+int getNumCircles()
+{
+	int numCircles;
+	std::cout << "Enter number of circles: ";
+	std::cin >> numCircles;
+	return numCircles;
 };
 
+// Creating random width and height for the rectangle
+float getRandomWidth()
+{
+	float width = randomFloat(0.0f, 1.0f);
+	return width;
+}
+
+float getRandomHeight()
+{
+	float height = randomFloat(0.0f, 1.0f);
+	return height;
+};
+
+void handleCollision(vector<particle>& circle, vector<particle>& rectangle)
+
+{
+	// Handle collision for circle particle
+	for (particle& one : circle)
+	{
+		if (one.shape == 0) // circle
+	{
+			if (one.position.x + one.radius > 1.0f || one.position.x - one.radius < -1.0f)
+			{
+				one.velocity.x *= -1.0f;
+			}
+			if (one.position.y + one.radius > 1.0f || one.position.y - one.radius < -1.0f)
+			{
+				one.velocity.y *= -1.0f;
+			}
+		}
+	}
+
+	for (particle& one : rectangle)
+	{
+		if (one.shape == 1) // rectangle
+		{
+			if (one.position.x + one.width / 2.0f > 1.0f || one.position.x - one.width / 2.0f < -1.0f)
+			{
+				one.velocity.x *= -1.0f;
+			}
+			if (one.position.y + one.height / 2.0f > 1.0f || one.position.y - one.height / 2.0f < -1.0f)
+			{
+				one.velocity.y *= -1.0f;
+			}
+		}
+	}
+};
+
+
+//Creating main function for program
 int main()
 {
-	
+
+
+	float radius = getCircleRadius();
+	int segments = 50;
+	int numCircles = getNumCircles();
+
+	int numRectangles = 3;
+	float height = getRandomHeight();
+	float width = getRandomWidth();
+
+
 	// Initialize GLFW
-	glfwInit();
+	if (!glfwInit())
+	{
+		std::cout << "Failed to initialize GLFW" << std::endl;
+		return -1;
+	}
 	
 	// Tell GLFW version of OpenGL is being used, 3.3
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -122,230 +214,89 @@ int main()
 	glfwMakeContextCurrent(window);
 
 	// Load glad
-	gladLoadGL();
+	if (!gladLoadGL())
+	{
+		std::cout << "Failed to load GLAD" << std::endl;
+		glfwTerminate();
+		return -1;
+	}
 
 
 	// let glad execute commands in the window, setting view to 800x800
 	glViewport(0, 0, 800, 800);
-
-	// Create vertex shader object and get its reference
-	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	// Attach the vertex shader source code to the vertex shader object
-	glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-	// Compile the source code into machine code
-	glCompileShader(vertexShader);
-
-	// Create fragment shader object and get its reference
-	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	// Attach the fragment source code to the fragment shdaer object
-	glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-	// Compile the source code into machine code
-	glCompileShader(fragmentShader);
-
-	// Create shader program object and get its reference
-	GLuint shaderProgram = glCreateProgram();
-	// Attach the vertex and fragment shader to the shader program object
-	glAttachShader(shaderProgram, vertexShader);
-	glAttachShader(shaderProgram, fragmentShader);
-	// Link the two shaders into the program 
-	glLinkProgram(shaderProgram);
-
-	// Delete the vertex shader and fragment shader objects
-	glDeleteShader(vertexShader);
-	glDeleteShader(fragmentShader);
-
-
-
-
-
-
-
-
-
-
-
-
-	// Create circle vertices based on the specified radius and number of segments
-	std::vector<float> circleVertices = createCircle(radius, segments);
-
-
-	// store circle information in particle vector
-	std::vector<particle> circles;
-
-	// Add circles as position, radius, mass, and restitution.
-	circles.push_back(particle(flatVector(0.0f, 0.0f), 0.08f, 1.0f));
-
-	circles.push_back(particle(flatVector(0.5f, 0.5f), 0.08f, 1.0f));
-
-	circles.push_back(particle(flatVector(-0.5f, -0.5f), 0.08f, 1.0f));
-
-	circles.push_back(particle(flatVector(0.5f, -0.5f), 0.08f, 1.0f));
-	circles.push_back(particle(flatVector(-0.5f, 0.5f), 0.08f, 1.0f));
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	// Create reference for Vertex array object and Vertex buffer object
-	GLuint VAO, VBO;
-
-	// Generate the VAO and VBO with 1 object each
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
-
-	// Make VAO the current Vertex Array Object
-	glBindVertexArray(VAO);
-	
-	// Bind VBO making sure its a GL_ARRAY_BUFFER
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	// Upload the circle mesh, not the particle state.
-	glBufferData(GL_ARRAY_BUFFER, circleVertices.size() * sizeof(float), circleVertices.data(), GL_STATIC_DRAW);
-
-	// Configure VAO so that OpenGL knows how to read the VBO
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-	// Enable vertex attribute so OpenGL knows what to do with it
-	glEnableVertexAttribArray(0);
-
-	// Bind both VAO and VBO to 0
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
-
-	GLint offSetLoc = glGetUniformLocation(shaderProgram, "offset");
-
-	// timing
-	float lastTime = static_cast<float>(glfwGetTime());
-
-
-	// Setting the color (R, G, B, A)
 	glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
+
+	vector<particle> circles;
+
+	for (int i = 0; i < numCircles; i++)
+	{
+		// random position, velocity, and acceleration per circle
+		flatVector pos = randomPosition();
+		flatVector vel = randomVelocity();
+		flatVector acc = randomAcceleration();
+
+		// create a new particle with the random values
+		circles.emplace_back(pos, radius, 1.0f);
+
+		// set the velocity and acceleration for the newly created particle
+		circles.back().velocity = vel;
+		circles.back().acceleration = acc;
+	};
+
+
+
+	vector<particle> rectangles;
+		
+	for (int i = 0; i < numRectangles; i++)
+		{
+			shapeType type = rectangle;
+
+			// random position, velocity, and acceleration per rectangle
+			flatVector pos = randomPosition();
+			flatVector vel = randomVelocity();
+			flatVector acc = randomAcceleration();
+
+			// create a new particle with the random values
+			rectangles.emplace_back(pos, 1.0f, 1.0f, type);
+
+			// set the velocity and acceleration for the newly created particle
+			rectangles.back().velocity = vel;
+			rectangles.back().acceleration = acc;
+
+			rectangles.back().width = randomFloat(0.2f, 0.5f);
+			rectangles.back().height = randomFloat(0.1f, 0.3f);
+		};
+	// Setting the color (R, G, B, A)
 	glClear(GL_COLOR_BUFFER_BIT);
 	glfwSwapBuffers(window);
-
-
-
-
-	// initialize with velocity
-	// first circle
-	circles[0].velocity = flatVector(0.8f, 0.1f);
-	// second circle
-	circles[1].velocity = flatVector(-1.0f, 0.1f);
-	// third circle
-	circles[2].velocity = flatVector(0.1f, -7.0f);
-	// fourth circle
-	circles[3].velocity = flatVector(-0.1f, -0.1f);
-	// fifth circle
-	circles[4].velocity = flatVector(0.0f, 0.0f);
-
-
-	// Main loop, keeps window open until user closes it
-	while (!glfwWindowShouldClose(window))
 	{
-
-		// find dt
-		float currentTime = static_cast<float>(glfwGetTime());
-		float dt = currentTime - lastTime;
-		lastTime = currentTime;
-
-		// cap the maximum delta time to prevent large jumps
-		if (dt > 0.01f) dt = 0.01f;
-
-		// rk4 integration for each circle
-		for (particle& circle : circles)
+		Renderer render(radius, segments);
+		// Main loop, keeps window open until user closes it
+		while (!glfwWindowShouldClose(window))
 		{
-			circle.rk4(dt);
-		}
+			float dt = .02f; // cap the delta time to avoid large jumps
 
-		// collision with left boundary for all circles 
-		for (particle& circle : circles)
-		{
-			if (circle.position.x - circle.radius <= -0.9f)
+			// rk4 integration for each circle
+			for (particle& circle : circles)
 			{
-				circle.position.x = -0.9f + circle.radius;
-				circle.velocity = flatVector(-circle.velocity.x * circle.restitution, circle.velocity.y);
+				circle.rk4(dt);
 			}
-		}
-		// collision with bottom boundary for all circles
-		for (particle& circle : circles)
-		{
-			if (circle.position.y - circle.radius <= -0.9f)
+
+			for (particle& rectangle : rectangles)
 			{
-				circle.position.y = -0.9f + circle.radius;
-				circle.velocity = flatVector(circle.velocity.x, -circle.velocity.y * circle.restitution);
-
+				rectangle.rk4(dt);
 			}
-		}
-		// collision with right boundary for all circles
-		for (particle& circle : circles)
-		{
-			if (circle.position.x + circle.radius >= 0.9f)
-			{
-				circle.position.x = 0.9f - circle.radius;
-				circle.velocity = flatVector(-circle.velocity.x * circle.restitution, circle.velocity.y);
-			}
-		}
+			
+			handleCollision(circles, rectangles);
 
-		// collision with top boundary for all circles
-		for (particle& circle : circles)
-		{
-			if (circle.position.y + circle.radius > 0.9f)
-			{
-				circle.position.y = 0.9f - circle.radius;
-				circle.velocity = flatVector(circle.velocity.x, -circle.velocity.y * circle.restitution);
-			}
-		}
+			glClear(GL_COLOR_BUFFER_BIT);
+			render.drawCircles(circles);
+			render.drawRectangles(rectangles);
+			glfwSwapBuffers(window);
 
-		// collision between circles for all pairs
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-		glClear(GL_COLOR_BUFFER_BIT);
-		// Tell OpenGL which Shader Program we want to use
-		glUseProgram(shaderProgram);
-		// Bind the VAO so OpenGL knows to use it
-		glBindVertexArray(VAO);
-		// Draw the triangles using the function GL_TRIANGLES
-		for (const particle& circle : circles)
-		{
-			glUniform2f(offSetLoc, circle.position.x, circle.position.y);
-			glDrawArrays(GL_TRIANGLE_FAN, 0,
-				static_cast<GLsizei>(circleVertices.size() / 2));
-		}
-		glfwSwapBuffers(window);
-
-		glfwPollEvents();
-	}
-
-
-	// Deleting the VAO, VBO and shader program
-	glDeleteVertexArrays(1, &VAO);
-	glDeleteBuffers(1, &VBO);
-	glDeleteProgram(shaderProgram);
+			glfwPollEvents();
+		};
+	};
 
 	glfwDestroyWindow(window);
 	glfwTerminate();
