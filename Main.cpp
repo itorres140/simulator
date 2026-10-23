@@ -37,13 +37,6 @@ flatVector randomAcceleration()
 }
 // Get the number of segments for the circle from the user
 // Ideally wanna make ui for all input instead of using console
-int getCircleVertices()
-{
-	int segments;
-	std::cout << "Enter number of segments: ";
-	std::cin >> segments;
-	return segments;
-};
 
 // Get the radius of the circle
 float getCircleRadius()
@@ -93,29 +86,6 @@ flatVector setInitialPosition()
 	return flatVector(x, y);
 }; 
 
-// Get the number of circles from the user
-
-/*vector<float> createCircle(float radius = getCircleRadius(), int segments = getCircleVertices())
-{
-	std::vector<float> vertices;
-	// radius = getCircleRadius();
-	// segments = getCircleVertices();
-
-	const float PI = 3.14159265358979323846f;
-
-	vertices.push_back(0.0f);
-	vertices.push_back(0.0f);
-
-	for (int i = 0; i <= segments; i++)
-	{
-		float angle = 2.0f * PI * i / segments;
-
-		vertices.push_back(std::cos(angle) * radius);
-		vertices.push_back(std::sin(angle) * radius);
-	}
-	return vertices;
-};*/
-
 int getNumCircles()
 {
 	int numCircles;
@@ -137,8 +107,7 @@ float getRandomHeight()
 	return height;
 };
 
-void handleCollision(vector<particle>& circle, vector<particle>& rectangle)
-
+void handleWallCollision(vector<particle>& circle, vector<particle>& rectangle)
 {
 	// Handle collision for circle particle
 	for (particle& one : circle)
@@ -287,7 +256,7 @@ int main()
 				rectangle.rk4(dt);
 			}
 			
-			handleCollision(circles, rectangles);
+			handleWallCollision(circles, rectangles);
 
 			glClear(GL_COLOR_BUFFER_BIT);
 			render.drawCircles(circles);

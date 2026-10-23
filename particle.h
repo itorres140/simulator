@@ -30,6 +30,7 @@ struct particle
 	float length;
 	shapeType shape;
 
+
 	particle(flatVector pos, float m, float e = 0.8f, shapeType type = circle):
 		position(pos),
 		velocity(0.0f, 0.0f),
@@ -46,8 +47,6 @@ struct particle
 		width(0.0f),
 		length(0.0f),
 		shape(type)
-
-	
 	{}
 
 	flatVector calcAccel(float dt)
